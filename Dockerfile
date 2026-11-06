@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # 1) Build the SvelteKit SPA
-FROM node:24-alpine AS web
+FROM node:25-alpine AS web
 WORKDIR /web
 RUN corepack enable
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
