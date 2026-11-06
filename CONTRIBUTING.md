@@ -51,7 +51,17 @@ cd web && pnpm gen:api
 ## Dependencies
 
 Dependabot opens weekly PRs. Minor and patch updates are grouped; major updates arrive one per PR.
-Review the changelog for majors, and check that the lockfile only changes what you expect.
+
+- **Minor and patch** PRs are merged automatically (squash) as soon as **CI passed** is green. The
+  `Dependabot auto-merge` workflow only turns on GitHub auto-merge; the required check does the gating,
+  so a red run never lands. A grouped PR containing any major update counts as a major.
+- **Major** PRs are never auto-merged. Read the changelog, and check that the lockfile only changes
+  what you expect, then merge them like any other PR.
+- Dependabot waits a few days after a release before proposing it (`cooldown` in
+  `.github/dependabot.yml`), so a bad release has time to be caught and yanked.
+- Auto-merges are performed with the workflow's `GITHUB_TOKEN`. GitHub does not start new workflow runs
+  for events caused by that token, so if a Dependabot merge does not trigger the **Publish** workflow,
+  run it by hand (Actions > Publish > Run workflow, branch `main`).
 
 ## Secrets
 
