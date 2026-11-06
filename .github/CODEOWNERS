@@ -1,0 +1,6 @@
+# Default owner for everything. Last matching pattern wins.
+*                   @ikkeflikkeri
+
+# CI/CD, release and repo-process changes always need the owner's eyes.
+/.github/           @ikkeflikkeri
+/Dockerfile         @ikkeflikkeri
