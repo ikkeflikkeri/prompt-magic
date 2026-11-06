@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/PromptMagic.Api/PromptMagic.Api.csproj" />
     <Project Path="src/PromptMagic.Core/PromptMagic.Core.csproj" />
+    <Project Path="src/PromptMagic.Infrastructure/PromptMagic.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PromptMagic.Api.Tests/PromptMagic.Api.Tests.csproj" />
     <Project Path="tests/PromptMagic.Core.Tests/PromptMagic.Core.Tests.csproj" />
+    <Project Path="tests/PromptMagic.Infrastructure.Tests/PromptMagic.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

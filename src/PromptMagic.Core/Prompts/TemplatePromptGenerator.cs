@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace PromptMagic.Core.Prompts;
 
 public sealed class TemplatePromptGenerator : IPromptGenerator
@@ -12,25 +10,25 @@ public sealed class TemplatePromptGenerator : IPromptGenerator
             throw new ArgumentException("Goal is required.", nameof(request));
         }
 
-        var sb = new StringBuilder();
-        sb.AppendLine("# Task");
-        sb.AppendLine(request.Goal.Trim());
+        // Always "\n" (not Environment.NewLine) so output is identical on every OS.
+        var sections = new List<string> { $"# Task\n{request.Goal.Trim()}" };
 
         if (!string.IsNullOrWhiteSpace(request.Audience))
         {
-            sb.AppendLine().AppendLine("# Audience").AppendLine(request.Audience.Trim());
+            sections.Add($"# Audience\n{request.Audience.Trim()}");
         }
 
         if (!string.IsNullOrWhiteSpace(request.Tone))
         {
-            sb.AppendLine().AppendLine("# Tone").AppendLine(request.Tone.Trim());
+            sections.Add($"# Tone\n{request.Tone.Trim()}");
         }
 
-        sb.AppendLine().AppendLine("# Instructions");
-        sb.AppendLine("- State any assumptions before answering.");
-        sb.AppendLine("- Ask a clarifying question if the task is ambiguous.");
-        sb.AppendLine("- Keep the answer concise and structured.");
+        sections.Add(
+            "# Instructions\n" +
+            "- State any assumptions before answering.\n" +
+            "- Ask a clarifying question if the task is ambiguous.\n" +
+            "- Keep the answer concise and structured.");
 
-        return Task.FromResult(new GeneratedPrompt(sb.ToString().TrimEnd()));
+        return Task.FromResult(new GeneratedPrompt(string.Join("\n\n", sections)));
     }
 }

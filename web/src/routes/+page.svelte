@@ -14,16 +14,23 @@
 		error = '';
 		result = '';
 
-		const { data, error: err } = await api.POST('/api/prompts/generate', {
-			body: { goal, audience: audience || null, tone: tone || null }
-		});
+		try {
+			const { data, error: err } = await api.POST('/api/prompts/generate', {
+				body: { goal, audience: audience || null, tone: tone || null }
+			});
 
-		loading = false;
-		if (err || !data) {
-			error = 'Could not generate a prompt. Check your input and try again.';
-			return;
+			if (err || !data) {
+				// Problem responses (e.g. 502 when the language model fails) carry a user-safe detail.
+				const detail = err && 'detail' in err ? err.detail : undefined;
+				error = detail ?? 'Could not generate a prompt. Check your input and try again.';
+				return;
+			}
+			result = data.prompt;
+		} catch {
+			error = 'Could not reach the server. Check your connection and try again.';
+		} finally {
+			loading = false;
 		}
-		result = data.prompt;
 	}
 </script>
 

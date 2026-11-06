@@ -32,6 +32,14 @@ export interface components {
 		GeneratePromptResponse: {
 			prompt: string;
 		};
+		ProblemDetails: {
+			type?: null | string;
+			title?: null | string;
+			/** Format: int32 */
+			status?: null | number | string;
+			detail?: null | string;
+			instance?: null | string;
+		};
 	};
 	responses: never;
 	parameters: never;
@@ -61,6 +69,15 @@ export interface operations {
 				};
 				content: {
 					'application/json': components['schemas']['GeneratePromptResponse'];
+				};
+			};
+			/** @description Bad Gateway */
+			502: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/problem+json': components['schemas']['ProblemDetails'];
 				};
 			};
 		};

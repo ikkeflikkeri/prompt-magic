@@ -1,5 +1,5 @@
 using PromptMagic.Api.Features.Prompts;
-using PromptMagic.Core.Prompts;
+using PromptMagic.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +7,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddHealthChecks();
-builder.Services.AddSingleton<IPromptGenerator, TemplatePromptGenerator>();
+// OpenAI-compatible LLM when Llm:Model / Llm:ApiKey is configured, offline templates otherwise.
+builder.Services.AddPromptGeneration(builder.Configuration);
 
 var app = builder.Build();
 
