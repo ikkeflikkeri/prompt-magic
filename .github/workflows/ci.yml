@@ -4,10 +4,22 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Least privilege: jobs only read the repository.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same PR; never cancel runs on main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
+    name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -19,7 +31,9 @@ jobs:
       - run: dotnet format PromptMagic.slnx --verify-no-changes --no-restore
 
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -38,3 +52,89 @@ jobs:
       - run: pnpm check
       - run: pnpm test
       - run: pnpm build
+
+  # Fails when the API's OpenAPI document and the committed TypeScript client have drifted apart.
+  api-contract:
+    name: API contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: Start API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+        run: |
+          dotnet run --project src/PromptMagic.Api -c Release --no-launch-profile --urls http://localhost:5080 > api.log 2>&1 &
+          curl --silent --show-error --fail --retry 60 --retry-delay 1 --retry-all-errors \
+            http://localhost:5080/openapi/v1.json --output /dev/null
+      - name: Regenerate client
+        working-directory: web
+        run: pnpm gen:api
+      - name: Verify the committed client is up to date
+        run: |
+          if ! git diff --exit-code -- web/src/lib/api/schema.d.ts; then
+            echo "::error::web/src/lib/api/schema.d.ts is out of date. Run 'pnpm gen:api' in web/ with the API running and commit the result."
+            exit 1
+          fi
+      - name: API log on failure
+        if: failure()
+        run: cat api.log || true
+
+  # Builds the production image and smoke-tests the running container.
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: prompt-magic:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test
+        run: |
+          docker run -d --rm --name pm -p 8080:8080 prompt-magic:ci
+          curl --silent --show-error --fail --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8080/healthz
+          curl --silent --show-error --fail http://localhost:8080/ --output /dev/null
+          curl --silent --show-error --fail -X POST http://localhost:8080/api/prompts/generate \
+            -H 'content-type: application/json' -d '{"goal":"Write a haiku about rain"}'
+      - name: Container log on failure
+        if: failure()
+        run: docker logs pm || true
+
+  # The single status check to require on main. It fails if any job above failed or was skipped.
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [backend, frontend, api-contract, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::At least one required job did not succeed."
+              exit 1
+            fi
+          done
