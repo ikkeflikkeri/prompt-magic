@@ -1,0 +1,60 @@
+name: Automated review
+
+# Reads the PR diff cold against the repo's standards and the linked ticket, then posts ONE advisory
+# comment. It never pushes, approves or merges: a human still reviews every PR.
+#
+# Setup (repository settings):
+#   secret    REVIEW_LLM_API_KEY    key for an OpenAI-compatible endpoint
+#   variable  REVIEW_LLM_MODEL      model name (required: the review is skipped while it is unset)
+#   variable  REVIEW_LLM_BASE_URL   optional, defaults to https://api.openai.com/v1
+#   label     review                create it; adding it re-runs the review on demand
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, labeled]
+
+permissions:
+  contents: read
+
+# One review at a time per PR. A newer run waits for the older one instead of racing it.
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    name: Review
+    # - opened / ready_for_review: review once (the script skips PRs that already have a review)
+    # - labeled: only the "review" label, which forces a fresh review
+    # - drafts, fork PRs (no secrets) and Dependabot (no Actions secrets) are skipped
+    if: >-
+      !github.event.pull_request.draft
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.actor != 'dependabot[bot]'
+      && (github.event.action != 'labeled' || github.event.label.name == 'review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      FORCE: ${{ github.event.action == 'labeled' }}
+      LLM_API_KEY: ${{ secrets.REVIEW_LLM_API_KEY }}
+      LLM_MODEL: ${{ vars.REVIEW_LLM_MODEL }}
+      LLM_BASE_URL: ${{ vars.REVIEW_LLM_BASE_URL }}
+    steps:
+      # Read-only checkout of the PR merge commit. Nothing from it is built or executed.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Review
+        run: node .github/review/review.mjs
+      - name: Remove the trigger label
+        if: github.event.action == 'labeled' && always()
+        run: gh pr edit "$PR_NUMBER" --remove-label review
