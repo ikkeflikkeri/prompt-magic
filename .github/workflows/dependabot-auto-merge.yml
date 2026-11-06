@@ -1,0 +1,46 @@
+name: Dependabot auto-merge
+
+# Turns on GitHub auto-merge for Dependabot PRs that only contain minor or patch updates.
+# Auto-merge waits for every required check on main ("CI passed") before it merges, so a
+# red CI run never lands. Major updates are left for a human to review.
+#
+# Security notes:
+# - Uses `pull_request` (not `pull_request_target`), so no untrusted code runs with write access.
+# - fetch-metadata refuses to run for PRs that are not from Dependabot.
+# - `update-type` is the highest semver change in the PR, so a grouped PR that contains even one
+#   major update is reported as a major and is skipped.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    name: Enable auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge (squash) for minor and patch updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Leave major updates for manual review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: echo "Major update (${{ steps.metadata.outputs.dependency-names }}); not auto-merging."
