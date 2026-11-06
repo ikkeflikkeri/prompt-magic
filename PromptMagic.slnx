@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PromptMagic.Api/PromptMagic.Api.csproj" />
+    <Project Path="src/PromptMagic.Core/PromptMagic.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PromptMagic.Api.Tests/PromptMagic.Api.Tests.csproj" />
+    <Project Path="tests/PromptMagic.Core.Tests/PromptMagic.Core.Tests.csproj" />
+  </Folder>
+</Solution>
