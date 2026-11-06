@@ -9,21 +9,19 @@ namespace PromptMagic.Infrastructure.Llm;
 /// <summary>Generates prompts through an OpenAI-compatible <c>/chat/completions</c> endpoint.</summary>
 public sealed class OpenAiCompatiblePromptGenerator(HttpClient http, IOptions<LlmOptions> options) : IPromptGenerator
 {
+    private static readonly RequestLabels Labels = new("Goal:", "Audience:", "Tone:");
+
     private readonly LlmOptions _options = options.Value;
 
     public async Task<GeneratedPrompt> GenerateAsync(PromptRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (string.IsNullOrWhiteSpace(request.Goal))
-        {
-            throw new ArgumentException("Goal is required.", nameof(request));
-        }
 
         var body = new ChatRequest(
             _options.Model,
             [
                 new ChatMessage("system", _options.SystemPrompt),
-                new ChatMessage("user", BuildUserMessage(request)),
+                new ChatMessage("user", request.Render(Labels)),
             ]);
 
         try
@@ -58,24 +56,6 @@ public sealed class OpenAiCompatiblePromptGenerator(HttpClient http, IOptions<Ll
         {
             throw new PromptGenerationException("The LLM endpoint timed out.", ex);
         }
-    }
-
-    private static string BuildUserMessage(PromptRequest request)
-    {
-        // Always "\n" (not Environment.NewLine) so the model sees the same text on every OS.
-        var sections = new List<string> { $"Goal:\n{request.Goal.Trim()}" };
-
-        if (!string.IsNullOrWhiteSpace(request.Audience))
-        {
-            sections.Add($"Audience:\n{request.Audience.Trim()}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Tone))
-        {
-            sections.Add($"Tone:\n{request.Tone.Trim()}");
-        }
-
-        return string.Join("\n\n", sections);
     }
 
     private sealed record ChatRequest(
