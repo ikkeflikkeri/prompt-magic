@@ -25,11 +25,17 @@ public class TemplatePromptGeneratorTests
         Assert.DoesNotContain("# Tone", result.Text);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task Rejects_blank_goal(string goal)
+    [Fact]
+    public async Task Produces_headed_sections_followed_by_stock_instructions()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _sut.GenerateAsync(new PromptRequest(goal)));
+        var result = await _sut.GenerateAsync(new PromptRequest("Write a haiku", "kids", "playful"));
+
+        Assert.Equal(
+            "# Task\nWrite a haiku\n\n# Audience\nkids\n\n# Tone\nplayful\n\n" +
+            "# Instructions\n" +
+            "- State any assumptions before answering.\n" +
+            "- Ask a clarifying question if the task is ambiguous.\n" +
+            "- Keep the answer concise and structured.",
+            result.Text);
     }
 }

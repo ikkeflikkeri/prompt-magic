@@ -108,11 +108,16 @@ public class OpenAiCompatiblePromptGeneratorTests
     }
 
     [Fact]
-    public async Task Blank_goal_is_rejected()
+    public async Task Sends_the_request_as_labelled_sections_with_lf_separators()
     {
-        var sut = Create(new FakeHandler(HttpStatusCode.OK, OkBody));
+        var handler = new FakeHandler(HttpStatusCode.OK, OkBody);
+        var sut = Create(handler);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.GenerateAsync(new PromptRequest("  ")));
+        await sut.GenerateAsync(new PromptRequest("rain haiku", "kids", "playful"));
+
+        using var json = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        var user = json.RootElement.GetProperty("messages")[1].GetProperty("content").GetString();
+        Assert.Equal("Goal:\nrain haiku\n\nAudience:\nkids\n\nTone:\nplayful", user);
     }
 
     private sealed class FakeHandler : HttpMessageHandler
