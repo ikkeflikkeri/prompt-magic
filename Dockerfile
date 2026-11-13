@@ -10,7 +10,7 @@ COPY web/ ./
 RUN pnpm build
 
 # 2) Build and publish the .NET API
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS api
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS api
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props PromptMagic.slnx ./
 COPY src/ src/
