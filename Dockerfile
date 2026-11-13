@@ -17,7 +17,7 @@ COPY src/ src/
 RUN dotnet publish src/PromptMagic.Api -c Release -o /app /p:UseAppHost=false
 
 # 3) Runtime image: API + static SPA in wwwroot
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 COPY --from=api /app ./
 COPY --from=web /web/build ./wwwroot
